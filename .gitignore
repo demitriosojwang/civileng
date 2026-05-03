@@ -23,6 +23,7 @@ build/
 node_modules/
 .next/
 .expo/
+next-env.d.ts
 
 # Database
 *.db
