@@ -28,10 +28,27 @@ from app.pipeline.site_to_design import SiteAssessmentPipelineResult
 
 
 # ─── Font Registration ───
-pdfmetrics.registerFont(TTFont('Times New Roman', '/usr/share/fonts/truetype/english/Times-New-Roman.ttf'))
-pdfmetrics.registerFont(TTFont('Calibri', '/usr/share/fonts/truetype/english/calibri-regular.ttf'))
-registerFontFamily('Times New Roman', normal='Times New Roman', bold='Times New Roman')
-registerFontFamily('Calibri', normal='Calibri', bold='Calibri')
+# Use Liberation Serif (metrically equivalent to Times New Roman) and
+# Liberation Sans (equivalent to Arial/Helvetica) as these work reliably.
+import os as _os
+
+_SERIF_PATH = '/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf'
+_SANS_PATH = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf'
+_DEJAVU = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+
+_SERIF_FONT = 'LiberationSerif' if _os.path.exists(_SERIF_PATH) else 'DejaVuSans'
+_SANS_FONT = 'LiberationSans' if _os.path.exists(_SANS_PATH) else 'DejaVuSans'
+
+if _os.path.exists(_SERIF_PATH):
+    pdfmetrics.registerFont(TTFont('LiberationSerif', _SERIF_PATH))
+    registerFontFamily('LiberationSerif', normal='LiberationSerif', bold='LiberationSerif')
+if _os.path.exists(_SANS_PATH):
+    pdfmetrics.registerFont(TTFont('LiberationSans', _SANS_PATH))
+    registerFontFamily('LiberationSans', normal='LiberationSans', bold='LiberationSans')
+
+# Always have DejaVu as fallback
+pdfmetrics.registerFont(TTFont('DejaVuSans', _DEJAVU))
+registerFontFamily('DejaVuSans', normal='DejaVuSans', bold='DejaVuSans')
 
 
 # ─── Color Palette ───
@@ -50,7 +67,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='ReportTitle',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=24,
         leading=30,
         textColor=PRIMARY,
@@ -59,7 +76,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='ReportSubtitle',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=14,
         leading=18,
         textColor=TEXT_MUTED,
@@ -68,7 +85,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='SectionHeading',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=16,
         leading=20,
         textColor=PRIMARY,
@@ -78,7 +95,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='SubHeading',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=12,
         leading=16,
         textColor=PRIMARY,
@@ -88,7 +105,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='BodyText2',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=10,
         leading=14,
         textColor=TEXT_DARK,
@@ -98,7 +115,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='TableHeader',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=9,
         leading=12,
         textColor=colors.white,
@@ -107,7 +124,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='TableCell',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=9,
         leading=12,
         textColor=TEXT_DARK,
@@ -116,7 +133,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='TableCellLeft',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=9,
         leading=12,
         textColor=TEXT_DARK,
@@ -125,7 +142,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='Warning',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=9,
         leading=12,
         textColor=colors.HexColor('#9d8149'),
@@ -136,7 +153,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='Note',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=9,
         leading=12,
         textColor=TEXT_MUTED,
@@ -147,7 +164,7 @@ def _build_styles():
 
     styles.add(ParagraphStyle(
         name='Footer',
-        fontName='Times New Roman',
+        fontName=_SERIF_FONT,
         fontSize=8,
         leading=10,
         textColor=TEXT_MUTED,
@@ -163,7 +180,7 @@ def _make_table(data, col_widths, styles_obj):
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Times New Roman'),
+        ('FONTNAME', (0, 0), (-1, 0), _SERIF_FONT),
         ('FONTSIZE', (0, 0), (-1, 0), 9),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),

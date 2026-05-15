@@ -138,7 +138,7 @@ class SiteAssessmentInput(BaseModel):
     # Environmental flags
     expansive_soil: bool = False
     seismic_zone: bool = False
-    frost susceptible: bool = False
+    frost_susceptible: bool = False
 
     # Access and logistics
     access_road_type: str = ""

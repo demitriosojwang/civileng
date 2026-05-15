@@ -128,3 +128,131 @@ export async function healthCheck(): Promise<any> {
   if (!res.ok) throw new Error(`API error: ${res.statusText}`);
   return res.json();
 }
+
+
+// ─── Moderation API ───
+
+export interface ModerationStats {
+  reviews_pending: number;
+  reviews_in_review: number;
+  reviews_approved_today: number;
+  reviews_rejected_today: number;
+  reviews_total: number;
+  disputes_open: number;
+  disputes_investigating: number;
+  disputes_resolved_today: number;
+  disputes_critical: number;
+  disputes_total: number;
+  blacklist_active: number;
+  blacklist_pending_approval: number;
+  blacklist_banned: number;
+  blacklist_total: number;
+  recent_activity: { type: string; id: string; description: string; timestamp: string }[];
+}
+
+export async function getModerationStats(): Promise<ModerationStats> {
+  const res = await fetch(`${API_BASE}/api/moderation/stats`);
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+// Reviews
+export async function listReviews(filters?: { status?: string; priority?: string; review_type?: string; limit?: number; offset?: number }): Promise<{ items: any[]; total: number }> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.priority) params.set("priority", filters.priority);
+  if (filters?.review_type) params.set("review_type", filters.review_type);
+  if (filters?.limit) params.set("limit", filters.limit.toString());
+  if (filters?.offset) params.set("offset", filters.offset.toString());
+  const res = await fetch(`${API_BASE}/api/moderation/reviews?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function createReview(data: any): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/moderation/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function getReview(reviewId: string): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/moderation/reviews/${reviewId}`);
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function addReviewAction(reviewId: string, action: string, comment: string = "", adminId: string = "admin_001"): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/moderation/reviews/${reviewId}/actions?admin_id=${adminId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, comment }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+// Disputes
+export async function listDisputes(filters?: { status?: string; severity?: string; dispute_type?: string; limit?: number; offset?: number }): Promise<{ items: any[]; total: number }> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.severity) params.set("severity", filters.severity);
+  if (filters?.dispute_type) params.set("dispute_type", filters.dispute_type);
+  const res = await fetch(`${API_BASE}/api/moderation/disputes?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function createDispute(data: any): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/moderation/disputes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function addDisputeComment(disputeId: string, comment: string, authorName: string, isInternal: boolean = false): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/moderation/disputes/${disputeId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ comment, author_name: authorName, author_role: "admin", is_internal: isInternal }),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+// Blacklist
+export async function listBlacklist(filters?: { entity_type?: string; severity?: string; reason_category?: string; is_active?: boolean; search?: string; limit?: number; offset?: number }): Promise<{ items: any[]; total: number }> {
+  const params = new URLSearchParams();
+  if (filters?.entity_type) params.set("entity_type", filters.entity_type);
+  if (filters?.severity) params.set("severity", filters.severity);
+  if (filters?.reason_category) params.set("reason_category", filters.reason_category);
+  if (filters?.is_active !== undefined) params.set("is_active", filters.is_active.toString());
+  if (filters?.search) params.set("search", filters.search);
+  const res = await fetch(`${API_BASE}/api/moderation/blacklist?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function addBlacklistEntry(data: any): Promise<any> {
+  const res = await fetch(`${API_BASE}/api/moderation/blacklist`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}
+
+export async function checkBlacklist(entityName: string, registrationNumber: string = ""): Promise<{ entity_name: string; is_blacklisted: boolean; matches: any[] }> {
+  const params = new URLSearchParams({ entity_name: entityName });
+  if (registrationNumber) params.set("registration_number", registrationNumber);
+  const res = await fetch(`${API_BASE}/api/moderation/blacklist/check?${params}`);
+  if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  return res.json();
+}

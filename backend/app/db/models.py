@@ -145,3 +145,184 @@ class Photo(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+# ─── Admin Moderation Models ───
+
+
+class AdminUser(Base):
+    """Internal team member with admin/moderation access."""
+    __tablename__ = "admin_users"
+
+    id = Column(String, primary_key=True)
+    email = Column(String(255), unique=True, nullable=False)
+    display_name = Column(String(255), default="")
+    role = Column(String(50), default="moderator")  # super_admin, admin, moderator, viewer
+    is_active = Column(Boolean, default=True)
+    last_login = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    review_actions = relationship("ReviewAction", back_populates="admin", cascade="all, delete-orphan")
+    dispute_assignments = relationship("Dispute", foreign_keys="Dispute.assigned_to", back_populates="assignee")
+
+
+class Review(Base):
+    """Design/calculation review submitted for approval."""
+    __tablename__ = "reviews"
+
+    id = Column(String, primary_key=True)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=False)
+    design_id = Column(String, ForeignKey("design_results.id"), nullable=True)
+
+    # Who submitted the review request
+    submitted_by = Column(String(255), nullable=False)  # engineer name or user ID
+    submitted_by_email = Column(String(255), default="")
+
+    # Review content
+    title = Column(String(500), default="")
+    description = Column(Text, default="")
+    review_type = Column(String(50), default="design_approval")  # design_approval, calculation_check, report_review
+    priority = Column(String(20), default="normal")  # urgent, high, normal, low
+
+    # Design summary for quick review
+    foundation_type = Column(String(50), default="")
+    bearing_capacity_kPa = Column(Float, nullable=True)
+    total_concrete_m3 = Column(Float, nullable=True)
+    total_rebar_kg = Column(Float, nullable=True)
+    confidence_score = Column(Float, nullable=True)
+
+    # Code compliance
+    standards_used = Column(JSON, default=list)  # ["BS 8004", "BS 8110"]
+    compliance_notes = Column(Text, default="")
+    has_warnings = Column(Boolean, default=False)
+    warning_count = Column(Integer, default=0)
+
+    # Status workflow
+    status = Column(String(30), default="pending")  # pending, in_review, approved, rejected, revisions_needed
+    assigned_reviewer = Column(String(255), nullable=True)
+
+    # Attachments
+    attachment_ids = Column(JSON, default=list)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    actions = relationship("ReviewAction", back_populates="review", cascade="all, delete-orphan")
+
+
+class ReviewAction(Base):
+    """Audit trail of actions taken on a review."""
+    __tablename__ = "review_actions"
+
+    id = Column(String, primary_key=True)
+    review_id = Column(String, ForeignKey("reviews.id"), nullable=False)
+    admin_id = Column(String, ForeignKey("admin_users.id"), nullable=False)
+
+    action = Column(String(50), nullable=False)  # approved, rejected, requested_revision, commented, escalated, assigned
+    comment = Column(Text, default="")
+    old_status = Column(String(30), default="")
+    new_status = Column(String(30), default="")
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    review = relationship("Review", back_populates="actions")
+    admin = relationship("AdminUser", back_populates="review_actions")
+
+
+class Dispute(Base):
+    """Dispute raised by a party regarding a design or tender."""
+    __tablename__ = "disputes"
+
+    id = Column(String, primary_key=True)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=False)
+    review_id = Column(String, ForeignKey("reviews.id"), nullable=True)
+
+    # Who raised the dispute
+    raised_by = Column(String(255), nullable=False)
+    raised_by_email = Column(String(255), default="")
+    raised_by_role = Column(String(50), default="contractor")  # contractor, client, engineer, other
+
+    # Dispute details
+    title = Column(String(500), nullable=False)
+    description = Column(Text, default="")
+    dispute_type = Column(String(50), default="design_disagreement")  # design_disagreement, calculation_error, scope_dispute, cost_dispute, safety_concern
+    severity = Column(String(20), default="medium")  # critical, high, medium, low
+
+    # What is being disputed
+    disputed_item = Column(String(500), default="")  # e.g. "Bearing capacity calculation"
+    disputed_value = Column(String(200), default="")  # e.g. "250 kPa"
+    proposed_value = Column(String(200), default="")  # e.g. "180 kPa"
+    evidence_refs = Column(JSON, default=list)  # file/photo references
+
+    # Resolution
+    status = Column(String(30), default="open")  # open, investigating, mediated, resolved, dismissed, escalated
+    assigned_to = Column(String, ForeignKey("admin_users.id"), nullable=True)
+    resolution_notes = Column(Text, default="")
+    resolution_outcome = Column(String(50), default="")  # upheld, overturned, compromise, dismissed
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    assignee = relationship("AdminUser", foreign_keys=[assigned_to], back_populates="dispute_assignments")
+    comments = relationship("DisputeComment", back_populates="dispute", cascade="all, delete-orphan")
+
+
+class DisputeComment(Base):
+    """Comment thread on a dispute."""
+    __tablename__ = "dispute_comments"
+
+    id = Column(String, primary_key=True)
+    dispute_id = Column(String, ForeignKey("disputes.id"), nullable=False)
+    author_name = Column(String(255), nullable=False)
+    author_email = Column(String(255), default="")
+    author_role = Column(String(50), default="admin")  # admin, engineer, contractor, client
+    comment = Column(Text, nullable=False)
+    is_internal = Column(Boolean, default=False)  # internal = admin-only, not visible to parties
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    dispute = relationship("Dispute", back_populates="comments")
+
+
+class BlacklistEntry(Base):
+    """Blacklisted entity (contractor, supplier, engineer, etc.)."""
+    __tablename__ = "blacklist_entries"
+
+    id = Column(String, primary_key=True)
+
+    # Entity details
+    entity_name = Column(String(500), nullable=False)
+    entity_type = Column(String(50), default="contractor")  # contractor, supplier, engineer, subconsultant, client
+    registration_number = Column(String(200), default="")
+    country = Column(String(100), default="")
+
+    # Blacklist reason
+    reason = Column(Text, nullable=False)
+    reason_category = Column(String(50), default="performance")  # performance, safety_violation, fraud, payment_default, legal, other
+    severity = Column(String(20), default="warning")  # warning, restricted, banned
+
+    # Evidence and references
+    related_project_ids = Column(JSON, default=list)
+    evidence_refs = Column(JSON, default=list)
+    incident_date = Column(Date, nullable=True)
+
+    # Who added and approved
+    added_by = Column(String(255), nullable=False)
+    approved_by = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True)  # can be deactivated if entry is overturned
+
+    # Review schedule
+    review_date = Column(Date, nullable=True)  # when this entry should be reviewed for removal
+
+    # Notes
+    internal_notes = Column(Text, default="")  # admin-only notes
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

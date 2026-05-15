@@ -5,7 +5,7 @@ Backend Application Entry Point
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import foundation, structural, soil, materials, projects, reports
+from app.api import foundation, structural, soil, materials, projects, reports, moderation
 from app.core.config import settings
 
 app = FastAPI(
@@ -31,6 +31,7 @@ app.include_router(structural.router, prefix="/api/structural", tags=["Structura
 app.include_router(soil.router, prefix="/api/soil", tags=["Soil Classification"])
 app.include_router(materials.router, prefix="/api/materials", tags=["Material Quantities"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
+app.include_router(moderation.router, prefix="/api/moderation", tags=["Admin Moderation"])
 
 
 @app.get("/api/health")
